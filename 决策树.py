@@ -1,4 +1,5 @@
 from sklearn import datasets
+from sklearn.model_selection import train_test_split
 
 stack=[]#储存决策树所有的内部节点
 allSubTrees=[]#储存所有剪枝过程中产生的子树
@@ -26,23 +27,6 @@ def sumDic(a,b):
         else:
             c[key]+=b[key]
     return c
-
-#按7：3的比例将原始数据集划分为训练集和测试集
-def chooseDatas(dataset,ratio):
-    dic=combineSameValue(dataset)
-    typeNum=len(dic)
-    train=[]
-    test=[]
-    for e in dic.keys():
-        l=[]
-        for a in dataset:
-            if a[len(a)-1]==e:
-                l.append(a)
-        for i in range(int(len(l)*ratio)):
-            train.append(l[i])
-        for i in range(int(len(l)*ratio),len(l)):
-            test.append(l[i])
-    return train,test
 
 #统计样本中每个类的数量，用于计算数据集的基尼指数
 def combineSameValue(items):
@@ -104,6 +88,7 @@ def buildTree(rows,scoref=getGini):
         for e in colset:
             if e not in uniqueList:
                 uniqueList.append(e)
+        #寻找划分维度
         #若列数据为连续数据
         if isinstance(rows[0][col],int) or isinstance(rows[0][col],float):
             uniqueList.sort()
@@ -274,32 +259,42 @@ def printTree(tree,kong):
         printTree(tree.rightNode," "+kong)
 
 #主函数
-def main(dataset,ratio):
-    trainDataSet,testDataSet=chooseDatas(dataset,ratio)
+def main(features,labels,ratio):
+    featuresTrain,featuresTest,LabelsTrain,LabelsTest=train_test_split(features,labels,test_size=0.3)
+    trainDataSet=[]
+    testDataSet=[]
+    for i in range(len(featuresTrain)):
+        l=[]
+        for e in featuresTrain[i]:
+            l.append(e)
+        l.append(LabelsTrain[i])
+        trainDataSet.append(l)
+    for i in range(len(featuresTest)):
+        l=[]
+        for e in featuresTest[i]:
+            l.append(e)
+        l.append(LabelsTest[i])
+        testDataSet.append(l)
+
     root=buildTree(trainDataSet)
-    #printTree(root,"")
     t=test(testDataSet,root)
-    print("剪枝前分类正确率为:"+str(t)+"%",end="\n\n")
+    print("剪枝前分类正确率为:"+str(t)+"%")
+    print("剪枝前的决策树")
+    printTree(root,"")
+    print()
     #对决策树进行剪枝
     global allSubTrees
     allSubTrees.append(copyTree(root))
     cut(root)
     #交叉验证找出最佳的子树
     bestTree=chooseBestSubTree(testDataSet)
-    #printTree(bestTree,"")  #打印剪枝后最佳子树
     t = test(testDataSet, bestTree)
     print("剪枝后分类正确率为:" + str(t) + "%")
+    print("剪枝后的决策树")
+    printTree(bestTree,"")  #打印剪枝后最佳子树
 
 #获取Iris鸢尾花数据集
 iris = datasets.load_iris()
 features = iris.data  # 获取特征数据集
 labels = iris.target  # 获取标签即类
-dataset = []
-# 合并特征数据集和标签数据集
-for i in range(len(features)):
-    l = []
-    for e in features[i]:
-        l.append(e)
-    l.append(labels[i])
-    dataset.append(l)
-main(dataset,0.7)
+main(features,labels,0.7)
